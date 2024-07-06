@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"sync"
+	"time"
 )
 
 type Person struct {
@@ -18,17 +19,46 @@ type Person struct {
 	IPAdrress string `json:"ip_address"`
 }
 
-func parseJSON(data []byte, channel chan Person, waitGroup *sync.WaitGroup) {
-	defer waitGroup.Done()
-	var person Person
+func parseJSONSequential(data []json.RawMessage) []Person {
+	var people []Person
+	for _, personData := range data {
+		var person Person
+		if err := json.Unmarshal(personData, &person); err != nil {
+			log.Fatal("Failed to unmarshal single person; ", err)
+		}
+		people = append(people, person)
+	}
+	return people
+}
 
+func parseJSON(data []byte, channel chan Person, wg *sync.WaitGroup) {
+	defer wg.Done()
+	var person Person
 	if err := json.Unmarshal(data, &person); err != nil {
-		fmt.Println("Error; ", err)
+		fmt.Println("Error:", err)
 		return
 	}
-
 	channel <- person
+}
+func parseJSONConcurrently(peopleData []json.RawMessage) []Person {
+	c := make(chan Person)
+	var wg sync.WaitGroup
 
+	for _, personData := range peopleData {
+		wg.Add(1)
+		go parseJSON(personData, c, &wg)
+	}
+
+	go func() {
+		wg.Wait()
+		close(c)
+	}()
+
+	var people []Person
+	for person := range c {
+		people = append(people, person)
+	}
+	return people
 }
 
 func Main() {
@@ -48,21 +78,20 @@ func Main() {
 		log.Fatal("Failed to unmarshal the JSON mock data; ", err)
 	}
 
-	channel := make(chan Person)
-	var waitGroup sync.WaitGroup
+	// Sequential reading
+	start := time.Now()
+	sequentialPeople := parseJSONSequential(people)
+	duration := time.Since(start)
 
-	for _, personData := range people {
-		waitGroup.Add(1)
-		go parseJSON(personData, channel, &waitGroup)
-	}
+	fmt.Printf("Parsed Sequential People: %+v\n", sequentialPeople)
+	fmt.Printf("Sequential Execution Time: %v\n", duration)
 
-	go func() {
-		waitGroup.Wait()
-		close(channel)
-	}()
+	// // Concurrent Execution
+	// startConcurrent := time.Now()
+	// peopleConcurrent := parseJSONConcurrently(people)
+	// durationConcurrent := time.Since(startConcurrent)
 
-	for person := range channel {
-		fmt.Printf("Parsed Person: %+v\n", person)
-	}
+	// fmt.Printf("Concurrent Parsed People: %+v\n", peopleConcurrent)
+	// fmt.Printf("Concurrent Execution Time: %v\n", durationConcurrent)
 
 }
