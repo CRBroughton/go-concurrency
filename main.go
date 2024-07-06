@@ -1,18 +1,24 @@
 package main
 
-import (
-	"fmt"
-	"time"
-)
+import "fmt"
 
-func say(s string) {
-	for i := 0; i < 3; i++ {
-		time.Sleep(100 * time.Millisecond)
-		fmt.Println(s)
+func sum(s []int, c chan int) {
+	sum := 0
+	for _, value := range s {
+		sum += value
 	}
+
+	c <- sum
 }
 
 func main() {
-	go say("Hello")
-	say("World")
+	s := []int{7, 2, 8, -9, 4, 0}
+	channel := make(chan int)
+
+	go sum(s[:len(s)/2], channel)
+	go sum(s[len(s)/2:], channel)
+
+	x, y := <-channel, <-channel
+
+	fmt.Println(x, y, x+y)
 }
