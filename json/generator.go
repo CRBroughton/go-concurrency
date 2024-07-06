@@ -44,7 +44,7 @@ func Generator() {
 		}
 	}
 
-	file, err := os.Create("large_data.json")
+	file, err := os.Create("./json/MOCK_DATA.json")
 	if err != nil {
 		fmt.Println("Error:", err)
 		return
