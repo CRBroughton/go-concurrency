@@ -1,0 +1,1 @@
+A small exploration into concurrency in Go
