@@ -1,24 +1,29 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"sync"
+)
 
-func sum(s []int, c chan int) {
-	sum := 0
-	for _, value := range s {
-		sum += value
-	}
+var (
+	counter int
+	mutex   sync.Mutex
+)
 
-	c <- sum
+func increment(waitGroup *sync.WaitGroup) {
+	defer waitGroup.Done()
+	mutex.Lock()
+	counter++
+	mutex.Unlock()
 }
 
 func main() {
-	s := []int{7, 2, 8, -9, 4, 0}
-	channel := make(chan int)
+	var waitGroup sync.WaitGroup
+	for i := 0; i < 1000; i++ {
+		waitGroup.Add(1)
+		go increment(&waitGroup)
+	}
 
-	go sum(s[:len(s)/2], channel)
-	go sum(s[len(s)/2:], channel)
-
-	x, y := <-channel, <-channel
-
-	fmt.Println(x, y, x+y)
+	waitGroup.Wait()
+	fmt.Println("Final Counter: ", counter)
 }
