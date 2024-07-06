@@ -31,7 +31,7 @@ func parseJSONSequential(data []json.RawMessage) []Person {
 	return people
 }
 
-func parseJSON(data []byte, channel chan Person, wg *sync.WaitGroup) {
+func parseJSON(data []byte, channel chan<- Person, wg *sync.WaitGroup) {
 	defer wg.Done()
 	var person Person
 	if err := json.Unmarshal(data, &person); err != nil {
