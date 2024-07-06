@@ -16,7 +16,7 @@ type Person struct {
 	LastName  string `json:"last_name"`
 	Email     string `json:"email"`
 	Gender    string `json:"gender"`
-	IPAdrress string `json:"ip_address"`
+	IPAddress string `json:"ip_address"`
 }
 
 func parseJSONSequential(data []json.RawMessage) []Person {
@@ -40,28 +40,29 @@ func parseJSON(data []byte, channel chan Person, wg *sync.WaitGroup) {
 	}
 	channel <- person
 }
+
 func parseJSONConcurrently(peopleData []json.RawMessage) []Person {
-	c := make(chan Person)
-	var wg sync.WaitGroup
+	channel := make(chan Person, len(peopleData))
+	var waitGroup sync.WaitGroup
 
 	for _, personData := range peopleData {
-		wg.Add(1)
-		go parseJSON(personData, c, &wg)
+		waitGroup.Add(1)
+		go parseJSON(personData, channel, &waitGroup)
 	}
 
 	go func() {
-		wg.Wait()
-		close(c)
+		waitGroup.Wait()
+		close(channel)
 	}()
 
 	var people []Person
-	for person := range c {
+	for person := range channel {
 		people = append(people, person)
 	}
 	return people
 }
 
-func Main() {
+func JSONMain() {
 	file, err := os.Open("./json/MOCK_DATA.json")
 	if err != nil {
 		log.Fatal("Failed to open the JSON mock data file; ", err)
@@ -78,20 +79,19 @@ func Main() {
 		log.Fatal("Failed to unmarshal the JSON mock data; ", err)
 	}
 
-	// Sequential reading
-	start := time.Now()
-	sequentialPeople := parseJSONSequential(people)
-	duration := time.Since(start)
+	// Sequential Execution
+	startSequential := time.Now()
+	peopleSequential := parseJSONSequential(people)
+	durationSequential := time.Since(startSequential)
 
-	fmt.Printf("Parsed Sequential People: %+v\n", sequentialPeople)
-	fmt.Printf("Sequential Execution Time: %v\n", duration)
+	fmt.Printf("Sequential Parsed People: %d\n", len(peopleSequential))
+	fmt.Printf("Sequential Execution Time: %v\n", durationSequential)
 
-	// // Concurrent Execution
-	// startConcurrent := time.Now()
-	// peopleConcurrent := parseJSONConcurrently(people)
-	// durationConcurrent := time.Since(startConcurrent)
+	// Concurrent Execution
+	startConcurrent := time.Now()
+	peopleConcurrent := parseJSONConcurrently(people)
+	durationConcurrent := time.Since(startConcurrent)
 
-	// fmt.Printf("Concurrent Parsed People: %+v\n", peopleConcurrent)
-	// fmt.Printf("Concurrent Execution Time: %v\n", durationConcurrent)
-
+	fmt.Printf("Concurrent Parsed People: %d\n", len(peopleConcurrent))
+	fmt.Printf("Concurrent Execution Time: %v\n", durationConcurrent)
 }
